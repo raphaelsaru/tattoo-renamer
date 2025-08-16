@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Renomeador de Imagens por IA (CLIP) - Lote</title>
+    <meta name="description" content="Webapp estático para classificar e renomear imagens em lote no navegador usando CLIP (Transformers.js).">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a'
+              }
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-800">
+    <header class="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-slate-200">
+      <div class="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
+        <h1 class="text-xl sm:text-2xl font-semibold">Renomeador de Imagens por IA</h1>
+        <nav class="flex items-center gap-2 text-sm">
+          <span class="px-2 py-1 rounded bg-brand-100 text-brand-800">CLIP no navegador</span>
+          <span class="px-2 py-1 rounded bg-slate-100 text-slate-700">100% estático</span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-6">
+      <section class="mb-6 grid gap-4 sm:grid-cols-2">
+        <div class="p-4 rounded-lg border border-slate-200 bg-white">
+          <h2 class="font-medium mb-3">Upload de imagens</h2>
+          <div id="dropzone" class="group relative flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg transition hover:border-brand-400 hover:bg-brand-50/30 border-slate-300 bg-slate-50 cursor-pointer">
+            <input id="file-input" type="file" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10 text-slate-400 group-hover:text-brand-500 mb-2">
+              <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v8.25A2.25 2.25 0 0120.25 16.5H6.75l-3.5 3.5a.75.75 0 01-1.28-.53V6zM6 8.25A.75.75 0 016.75 7.5h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 8.25zm0 3a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h6a.75.75 0 000-1.5h-6z" clip-rule="evenodd" />
+            </svg>
+            <p class="text-sm text-slate-600">Arraste e solte ou clique para selecionar imagens</p>
+            <p class="text-xs text-slate-500 mt-1">JPG, PNG, WEBP — processamento 100% local</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-lg border border-slate-200 bg-white">
+          <h2 class="font-medium mb-3">Configurações</h2>
+          <div class="space-y-4">
+            <div>
+              <label for="threshold" class="block text-sm font-medium mb-1">Threshold de confiança</label>
+              <div class="flex items-center gap-3">
+                <input id="threshold" type="range" min="0" max="1" step="0.01" value="0.30" class="w-full" />
+                <input id="threshold-number" type="number" min="0" max="1" step="0.01" value="0.30" class="w-20 px-2 py-1 border rounded" />
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Abaixo do threshold: marcar como "desconhecido" e pedir confirmação manual.</p>
+            </div>
+
+            <div class="text-sm text-slate-600">
+              <p>Status do modelo: <span id="model-status" class="font-medium">carregando…</span></p>
+              <p class="text-xs text-slate-500">Primeiro uso pode demorar para baixar o modelo CLIP.</p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2">
+              <button id="clear-all" class="inline-flex items-center gap-2 px-3 py-2 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200">
+                Limpar tudo
+              </button>
+              <button id="reclassify" class="inline-flex items-center gap-2 px-3 py-2 rounded bg-white text-slate-700 hover:bg-slate-50 border border-slate-200">
+                Reprocessar previsões
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mb-4 flex items-center justify-between">
+        <h2 class="font-medium">Imagens</h2>
+        <div class="flex flex-wrap gap-2">
+          <button id="download-zip" class="inline-flex items-center gap-2 px-3 py-2 rounded bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            Baixar ZIP renomeado
+          </button>
+          <button id="download-csv" class="inline-flex items-center gap-2 px-3 py-2 rounded bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            Exportar CSV
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        <div id="empty-state" class="text-center text-slate-500 py-16">
+          <p>Nenhuma imagem carregada.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mx-auto max-w-7xl px-4 pb-8 text-xs text-slate-500">
+      <p>Funciona 100% no navegador. Modelos via Transformers.js (CLIP). Pronto para deploy estático (Vercel).</p>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
