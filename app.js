@@ -89,9 +89,9 @@ let pipelineVision = null; // CLIP pipeline
 async function ensureModelLoaded() {
 	if (modelLoaded) return;
 	setModelStatus('baixando modelos…');
-	// Load Transformers.js dynamically
+	// Load Transformers.js dynamically (UMD build exposes window.transformers)
 	if (!window.transformers) {
-		await loadScript('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.1');
+		await loadScript('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.1/dist/transformers.min.js');
 	}
 	const { pipeline } = window.transformers;
 	setModelStatus('inicializando CLIP…');
